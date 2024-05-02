@@ -1,0 +1,23 @@
+{
+  "name": "qr-code-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/app.js",
+  "source": "src/index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "parcel --no-cache",
+    "build": "parcel build --no-cache"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "qrcode": "^1.5.1"
+  },
+  "devDependencies": {
+    "buffer": "^6.0.3",
+    "parcel": "^2.12.0"
+  }
+}

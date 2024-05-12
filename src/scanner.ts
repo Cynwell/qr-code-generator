@@ -17,7 +17,9 @@ const decodeQR = (imageData: ImageData) => {
     const binaryData = new Uint8Array(code.binaryData);
     const decodedString = decoder.decode(binaryData);
     const parts = decodedString.split('|');
-    const [index, total, mode, metadataStr, ...dataParts] = parts;
+    const [index, total, mode, metadataLength, ...rest] = parts;
+    const metadataStr = rest.join('|').substring(0, parseInt(metadataLength));
+    const dataParts = rest.join('|').substring(parseInt(metadataLength));
     if (parseInt(index) === 1) { // Only parse metadata if it's the first chunk
       try {
         metadata = JSON.parse(metadataStr);
@@ -65,7 +67,7 @@ const scanQR = async () => {
     const result = decodeQR(imageData);
     if (result) {
       console.log('Result:', result)
-      chunks[Number(result.index) - 1] = result.decodedData; // Convert Uint8Array to string
+      chunks[parseInt(result.index) - 1] = result.decodedData; // Convert Uint8Array to string
       total = parseInt(result.total);
       if (typeof result.decodedData === 'string') {
         output.value += result.decodedData;
@@ -80,7 +82,7 @@ const scanQR = async () => {
   observer.observe(canvas, { attributes: true, childList: true, subtree: true }); // Reconnect the observer
 
   // Enable the download button when scanning is finished
-  console.log('Chunks:', chunks.length, 'Total:', total)
+  console.log('Chunks received:', chunks.length, 'Total:', total)
   if (chunks.length === total) {
     // downloadButton.disabled = false;
     downloadButton?.removeAttribute('disabled');

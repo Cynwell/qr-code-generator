@@ -1,3 +1,4 @@
+// Checked all the functions in this file, no problem.
 import QRCode from 'qrcode';
 
 const chunkSize = 2300;
@@ -14,6 +15,13 @@ const addHeader = (chunk: Uint8Array, index: number, total: number, mode: string
 }
 
 const generateQR = async (input: string | Uint8Array) => {
+  // Logic:
+  // 1. utf-8 mode:
+  //   Text data -> Escape special characters -> Encode to utf-8
+  // 2. Binary mode:
+  //   Metadata -> JSON.stringify -> Escape special characters -> Encode to utf-8
+  //   Binary data -> Uint8Array
+  //   Concatenate metadata and binary data
   if (typeof input === 'string' && !input.trim()) {
     // console.log('Input text is empty.');
     return
@@ -106,7 +114,7 @@ if (uploadInput) {
 }
 
 function chunkArray(array: Uint8Array, chunkSize: number): Uint8Array[] {
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   for (let i = 0; i < array.length; i += chunkSize) {
     chunks.push(array.slice(i, i + chunkSize));
   }

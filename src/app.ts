@@ -14,6 +14,25 @@ const addHeader = (chunk: Uint8Array, index: number, total: number, mode: string
   return new Uint8ClampedArray(dataWithHeader.buffer);
 }
 
+const escapeSpecialCharacters = (input: string): string => {
+  // Define the special characters and their escaped counterparts
+  const specialCharacters: { [key: string]: string } = {
+    // '\\': '\\\\',
+    // '\b': '\\b',
+    // '\f': '\\f',
+    // '\n': '\\n',
+    // '\r': '\\r',
+    // '\t': '\\t',
+    // '\"': '\\"',
+    // "\'": "\\'",
+    "|": "\\|"
+  };
+
+  // Replace each special character with its escaped counterpart
+  // return input.replace(/[\\bfnrt"']/g, char => specialCharacters[char]);
+  return input.replace(/[|]/g, char => specialCharacters[char]);
+}
+
 const generateQR = async (input: string | Uint8Array) => {
   // Logic:
   // 1. utf-8 mode:
@@ -29,7 +48,7 @@ const generateQR = async (input: string | Uint8Array) => {
 
   const encodingMode = typeof input === 'string' ? 'utf-8' : 'binary';
   console.log(`Encoding mode: ${encodingMode} mode`);
-  const buffer = encodingMode === 'utf-8' ? new TextEncoder().encode(input as string) : new Uint8Array(input as ArrayBuffer);
+  const buffer = encodingMode === 'utf-8' ? new TextEncoder().encode(escapeSpecialCharacters(input as string)) : new Uint8Array(input as ArrayBuffer);
   console.log(`Buffer length: ${buffer.length}`);
   const chunks: Uint8ClampedArray[] = chunkArray(buffer, chunkSize).map((chunk, index, array) => addHeader(chunk, index, array.length, encodingMode));
 
@@ -56,7 +75,7 @@ const generateQR = async (input: string | Uint8Array) => {
       console.error(err)
     }
     // Wait for 0.5 seconds before generating the next QR code
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise(resolve => setTimeout(resolve, 2000))
   }
 }
 

@@ -17,9 +17,10 @@ const decodeQR = (imageData: ImageData) => {
     const binaryData = new Uint8Array(code.binaryData);
     const decodedString = decoder.decode(binaryData);
     const parts = decodedString.split('|');
-    const [index, total, mode, metadataLength, ...rest] = parts;
-    const metadataStr = rest.join('|').substring(0, parseInt(metadataLength));
-    const dataParts = rest.join('|').substring(parseInt(metadataLength));
+    const [index, total, mode, metadataStr, ...dataParts] = parts;
+    // const [index, total, mode, metadataLength, ...rest] = parts;
+    // const metadataStr = rest.join('|').substring(0, parseInt(metadataLength));
+    // const dataParts = rest.join('|').substring(parseInt(metadataLength));
     if (parseInt(index) === 1) { // Only parse metadata if it's the first chunk
       try {
         metadata = JSON.parse(metadataStr);

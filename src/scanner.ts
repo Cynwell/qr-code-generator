@@ -21,40 +21,39 @@ const decodeQR = (imageData: ImageData) => {
     // const [index, total, mode, metadataLength, ...rest] = parts;
     // const metadataStr = rest.join('|').substring(0, parseInt(metadataLength));
     // const dataParts = rest.join('|').substring(parseInt(metadataLength));
+    console.table({ index, total, mode, metadataStr, dataParts });
     if (parseInt(index) === 1) { // Only parse metadata if it's the first chunk
-      try {
-        metadata = JSON.parse(metadataStr);
-      } catch (error) {
-        console.error('Failed to parse metadata:', error);
-        return null;
+      if (mode === 'binary' && metadataStr) {
+        try {
+          // The regex should be: "(\\\|)"
+          // metadata = JSON.parse(metadataStr.replace(/\\|/g, '|'));
+          metadata = JSON.parse(metadataStr.replace(/(\\\|)/g, '|'));
+        } catch (error) {
+          console.error('Failed to parse metadata:', error);
+          metadata = {'name': 'file.bin', 'type': 'application/octet-stream'};
+        }
+        // Concatenate dataParts into chunks
+        const data = dataParts.join('|');
+        console.table({ index, total, mode, metadata, data });
+        return { index, total, mode, metadata, decodedData: data };
+      }
+      else if (mode === 'utf-8') {
+        console.log('utf-8 mode');
+        // const data will be the concatenation between metadataStr and dataParts, where dataParts needs to be joined via '|' too
+        // First dataParts join '|', then concatenate metadataStr and dataParts
+        // const data = (metadataStr + dataParts.join('|')).replace(/\\|/g, '|');
+        const data = (metadataStr + dataParts.join('|')).replace(/(\\\|)/g, '|');
+        console.table({ index, total, mode, metadata: '', data });
+        return { index, total, mode, metadata: '', decodedData: data };
       }
     }
-    const data = dataParts.join('|');
-    console.table({ index, total, mode, metadata, data });
-    totalSegments = parseInt(total);
-    let decodedData;
-    if (data !== '') { // Check if data is defined
-      if (mode === 'utf-8') {
-        console.log('utf-8 mode');
-        decodedData = data;
-      } else {
-        console.log('binary mode');
-        // Find the index of the separator in the binaryData
-        const separatorIndex = binaryData.findIndex((byte, i) => i > metadataStr.length && byte === '|'.charCodeAt(0));
-        if (separatorIndex !== -1) {
-          // Split the binaryData into metadata and fileData
-          const fileData = binaryData.slice(separatorIndex + 1);
-          decodedData = fileData;
-        } else {
-          decodedData = binaryData;
-        }
-      }
-      chunks[parseInt(index) - 1] = decodedData;
-      console.log('Decoded data:', decodedData);
-      return { index, total, mode, metadata, decodedData };
+    else {
+      // const data = (metadataStr + dataParts.join('|')).replace(/\\|/g, '|');
+      const data = (metadataStr + dataParts.join('|')).replace(/(\\\|)/g, '|');
+      console.table({ index, total, mode, metadata: '', data });
+      return { index, total, mode, metadata: '', decodedData: data };
     }
   }
-  return null;
 }
 
 let total = 0;
@@ -70,13 +69,7 @@ const scanQR = async () => {
       console.log('Result:', result)
       chunks[parseInt(result.index) - 1] = result.decodedData; // Convert Uint8Array to string
       total = parseInt(result.total);
-      if (typeof result.decodedData === 'string') {
-        output.value += result.decodedData;
-      } else {
-        const decoder = new TextDecoder();
-        output.value += decoder.decode(result.decodedData);
-      }
-      console.log('Metadata:', result.metadata); // Log the metadata
+      // output.value += result.decodedData;
     }
   }
 

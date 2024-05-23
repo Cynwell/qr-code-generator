@@ -56,11 +56,13 @@ const generateQR = async (input: string | Uint8Array) => {
   for (let i = 0; i < chunks.length; i++) {
     console.log(`Chunk ${i + 1} length: ${chunks[i].length}`)
   }
+  console.log('Chunks:', chunks);
 
   const decoder = new TextDecoder();
   // @ts-ignore
   for (const chunk of chunks) {
     try {
+      console.log('Hey');
       console.log('Generating QR code for:', decoder.decode(chunk));
       // console.log('Chunk length:', chunk.length);
       const startTime = performance.now();
@@ -68,7 +70,7 @@ const generateQR = async (input: string | Uint8Array) => {
       await QRCode.toCanvas(canvas, [{ data: chunk, mode: 'byte' }, { errorCorrectionLevel: 'L' }]);
       const endTime = performance.now();
       const timeElapsed = endTime - startTime;
-      // console.log(`Time consumed: ${timeElapsed.toFixed(1)} ms`);
+      console.log(`Time consumed: ${timeElapsed.toFixed(1)} ms`);
       // @ts-ignore
       // console.log(await QRCode.toDataURL([{ data: chunk, mode: 'byte' }, { errorCorrectionLevel: 'L' }]))
     } catch (err) {
@@ -102,8 +104,8 @@ if (uploadInput) {
           const chunks: Uint8Array[] = chunkArray(data, chunkSize); // Split the data into chunks of chunkSize bytes each
 
           for (const chunk of chunks) {
-            console.log('Generating QR code for:', decoder.decode(chunk.buffer));
-            const startTime = performance.now();
+            // console.log('Generating QR code for:', decoder.decode(chunk.buffer));
+            // const startTime = performance.now();
             const metadata = {
                 name: file.name,
                 size: file.size,
@@ -119,10 +121,10 @@ if (uploadInput) {
             const fileDataWithMetadata = new Uint8Array([...metadataArray, ...chunk]);
             // @ts-ignore
             generateQR(fileDataWithMetadata);
-            const endTime = performance.now();
-            const timeElapsed = endTime - startTime;
-            console.log(`Time consumed: ${timeElapsed.toFixed(1)} ms`);
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before generating the next QR code
+            // const endTime = performance.now();
+            // const timeElapsed = endTime - startTime;
+            // console.log(`Time consumed: ${timeElapsed.toFixed(1)} ms`);
+            // await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before generating the next QR code
           }
         }
       };

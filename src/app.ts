@@ -1,7 +1,7 @@
 // Checked all the functions in this file, no problem.
 import QRCode from 'qrcode';
 
-const chunkSize = 2300;
+const chunkSize = 2000;
 const qrInput = document.getElementById('qr-input');
 const canvas = document.getElementById('canvas');
 const uploadInput = document.getElementById('upload') as HTMLInputElement;
@@ -17,19 +17,10 @@ const addHeader = (chunk: Uint8Array, index: number, total: number, mode: string
 const escapeSpecialCharacters = (input: string): string => {
   // Define the special characters and their escaped counterparts
   const specialCharacters: { [key: string]: string } = {
-    // '\\': '\\\\',
-    // '\b': '\\b',
-    // '\f': '\\f',
-    // '\n': '\\n',
-    // '\r': '\\r',
-    // '\t': '\\t',
-    // '\"': '\\"',
-    // "\'": "\\'",
     "|": "\\|"
   };
 
   // Replace each special character with its escaped counterpart
-  // return input.replace(/[\\bfnrt"']/g, char => specialCharacters[char]);
   return input.replace(/[|]/g, char => specialCharacters[char]);
 }
 
@@ -62,9 +53,7 @@ const generateQR = async (input: string | Uint8Array) => {
   // @ts-ignore
   for (const chunk of chunks) {
     try {
-      console.log('Hey');
       console.log('Generating QR code for:', decoder.decode(chunk));
-      // console.log('Chunk length:', chunk.length);
       const startTime = performance.now();
       // @ts-ignore
       await QRCode.toCanvas(canvas, [{ data: chunk, mode: 'byte' }, { errorCorrectionLevel: 'L' }]);
@@ -72,12 +61,11 @@ const generateQR = async (input: string | Uint8Array) => {
       const timeElapsed = endTime - startTime;
       console.log(`Time consumed: ${timeElapsed.toFixed(1)} ms`);
       // @ts-ignore
-      // console.log(await QRCode.toDataURL([{ data: chunk, mode: 'byte' }, { errorCorrectionLevel: 'L' }]))
     } catch (err) {
       console.error(err)
     }
     // Wait for 0.5 seconds before generating the next QR code
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise(resolve => setTimeout(resolve, 500))
   }
 }
 
@@ -102,30 +90,21 @@ if (uploadInput) {
         if (event.target) {
           const data = new Uint8Array(event.target.result as ArrayBuffer);
           const chunks: Uint8Array[] = chunkArray(data, chunkSize); // Split the data into chunks of chunkSize bytes each
-
-          for (const chunk of chunks) {
-            // console.log('Generating QR code for:', decoder.decode(chunk.buffer));
-            // const startTime = performance.now();
-            const metadata = {
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                lastModified: file.lastModified,
-                // Include all properties of the File object
-            };
-            console.table(metadata);
-            console.log('Chunk length:', chunk.length);
-            // Convert metadata to JSON string and encode it into a Uint8Array
-            const metadataArray = new TextEncoder().encode(JSON.stringify(metadata) + '|');
-            // Concatenate metadata array and data array
-            const fileDataWithMetadata = new Uint8Array([...metadataArray, ...chunk]);
-            // @ts-ignore
-            generateQR(fileDataWithMetadata);
-            // const endTime = performance.now();
-            // const timeElapsed = endTime - startTime;
-            // console.log(`Time consumed: ${timeElapsed.toFixed(1)} ms`);
-            // await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before generating the next QR code
-          }
+          console.log(`Number of chunks: ${chunks.length}`);
+          const metadata = {
+            // Include all properties of the File object
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+          };
+          console.table(metadata);
+          // Convert metadata to JSON string and encode it into a Uint8Array
+          const metadataArray = new TextEncoder().encode(JSON.stringify(metadata) + '|');
+          // Concatenate metadata array and data array
+          const fileDataWithMetadata = new Uint8Array([...metadataArray, ...data]);
+          // @ts-ignore
+          generateQR(fileDataWithMetadata);
         }
       };
 

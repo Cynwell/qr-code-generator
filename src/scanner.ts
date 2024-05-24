@@ -7,7 +7,8 @@ const downloadButton = document.getElementById('download-button');
 
 let chunks: Uint8Array[] | string[] = []; // Array to store the binary data
 let totalSegments = 0;
-let metadata = {'name': 'file.bin', 'type': 'application/octet-stream'}; // Default metadata
+let metadata = { 'name': 'file.bin', 'type': 'application/octet-stream' }; // Default metadata
+let mode = 'unknown'; // Default mode
 
 const decodeQR = (imageData: ImageData) => {
   const code = jsQR(imageData.data, imageData.width, imageData.height);
@@ -18,19 +19,14 @@ const decodeQR = (imageData: ImageData) => {
     const decodedString = decoder.decode(binaryData);
     const parts = decodedString.split('|');
     const [index, total, mode, metadataStr, ...dataParts] = parts;
-    // const [index, total, mode, metadataLength, ...rest] = parts;
-    // const metadataStr = rest.join('|').substring(0, parseInt(metadataLength));
-    // const dataParts = rest.join('|').substring(parseInt(metadataLength));
     console.table({ index, total, mode, metadataStr, dataParts });
     if (parseInt(index) === 1) { // Only parse metadata if it's the first chunk
-      if (mode === 'binary' && metadataStr) {
+      if (mode === 'binary') {
         try {
-          // The regex should be: "(\\\|)"
-          // metadata = JSON.parse(metadataStr.replace(/\\|/g, '|'));
-          metadata = JSON.parse(metadataStr.replace(/(\\\|)/g, '|'));
+          metadata = JSON.parse(metadataStr.replace(/(\|)/g, '|'));
         } catch (error) {
           console.error('Failed to parse metadata:', error);
-          metadata = {'name': 'file.bin', 'type': 'application/octet-stream'};
+          metadata = { 'name': 'file.bin', 'type': 'application/octet-stream' };
         }
         // Concatenate dataParts into chunks
         const data = dataParts.join('|');
@@ -39,17 +35,13 @@ const decodeQR = (imageData: ImageData) => {
       }
       else if (mode === 'utf-8') {
         console.log('utf-8 mode');
-        // const data will be the concatenation between metadataStr and dataParts, where dataParts needs to be joined via '|' too
-        // First dataParts join '|', then concatenate metadataStr and dataParts
-        // const data = (metadataStr + dataParts.join('|')).replace(/\\|/g, '|');
-        const data = (metadataStr + dataParts.join('|')).replace(/(\\\|)/g, '|');
+        const data = dataParts.length > 1 ? (metadataStr + '|' + dataParts.join('|')).replace(/(\|)/g, '|') : metadataStr.replace(/(\|)/g, '|');
         console.table({ index, total, mode, metadata: '', data });
         return { index, total, mode, metadata: '', decodedData: data };
       }
     }
     else {
-      // const data = (metadataStr + dataParts.join('|')).replace(/\\|/g, '|');
-      const data = (metadataStr + dataParts.join('|')).replace(/(\\\|)/g, '|');
+      const data = dataParts.length > 1 ? (metadataStr + '|' + dataParts.join('|')).replace(/(\|)/g, '|') : metadataStr.replace(/(\|)/g, '|');
       console.table({ index, total, mode, metadata: '', data });
       return { index, total, mode, metadata: '', decodedData: data };
     }
@@ -59,8 +51,6 @@ const decodeQR = (imageData: ImageData) => {
 let total = 0;
 
 const scanQR = async () => {
-  observer.disconnect(); // Disconnect the observer while scanning
-
   const imageData = context?.getImageData(0, 0, canvas.width, canvas.height);
   if (imageData) {
     console.log('Scanning QR code...');
@@ -69,11 +59,9 @@ const scanQR = async () => {
       console.log('Result:', result)
       chunks[parseInt(result.index) - 1] = result.decodedData; // Convert Uint8Array to string
       total = parseInt(result.total);
-      // output.value += result.decodedData;
+      mode = result.mode;
     }
   }
-
-  observer.observe(canvas, { attributes: true, childList: true, subtree: true }); // Reconnect the observer
 
   // Enable the download button when scanning is finished
   console.log('Chunks received:', chunks.length, 'Total:', total)
@@ -113,14 +101,14 @@ if (downloadButton) {
 function concatenateUint8Arrays(arrays: Uint8Array[]): Uint8Array {
   let totalLength = 0;
   for (const arr of arrays) {
-      totalLength += arr.length;
+    totalLength += arr.length;
   }
 
   const result = new Uint8Array(totalLength);
   let offset = 0;
   for (const arr of arrays) {
-      result.set(arr, offset);
-      offset += arr.length;
+    result.set(arr, offset);
+    offset += arr.length;
   }
 
   return result;

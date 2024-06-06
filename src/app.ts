@@ -2,15 +2,18 @@
 import QRCode from 'qrcode';
 
 const chunkSize = 2000;
-const qrInput = document.getElementById('qr-input');
+const textInput = document.getElementById('text-input');
 const canvas = document.getElementById('canvas');
 const uploadInput = document.getElementById('upload') as HTMLInputElement;
 
 const addHeader = (chunk: Uint8Array, index: number, total: number, mode: string): Uint8ClampedArray => {
+  console.log('[DEBUG] First 100 byte in the chunk:', chunk.slice(0, 100));
+  console.log('[DEBUG] Chunk Length:', chunk.byteLength)
   const header = new TextEncoder().encode(`${index + 1}|${total}|${mode}|`);
-  const dataWithHeader = new Uint8Array(header.length + chunk.length);
-  dataWithHeader.set(header);
-  dataWithHeader.set(chunk, header.length);
+  // const dataWithHeader = new Uint8Array(header.length + chunk.length);
+  // dataWithHeader.set(header);
+  // dataWithHeader.set(chunk, header.length);
+  const dataWithHeader = new Uint8Array([...header, ...chunk]);
   return new Uint8ClampedArray(dataWithHeader.buffer);
 }
 
@@ -65,15 +68,16 @@ const generateQR = async (input: string | Uint8Array) => {
       console.error(err)
     }
     // Wait for 0.5 seconds before generating the next QR code
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 250))
   }
 }
 
-if (qrInput) {
-  qrInput.addEventListener('input', (e) => {
+if (textInput) {
+  textInput.addEventListener('input', (e) => {
     if (e.target) {
       generateQR((e.target as HTMLInputElement).value);
     }
+    // assign output to the 
   })
 }
 
@@ -120,3 +124,5 @@ function chunkArray(array: Uint8Array, chunkSize: number): Uint8Array[] {
   }
   return chunks;
 }
+
+export { addHeader, escapeSpecialCharacters, chunkArray };

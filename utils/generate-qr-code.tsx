@@ -1,0 +1,100 @@
+// utils/generate-qr-code.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
+
+interface GenerateQRCodeProps {
+    input: string | File;
+    onComplete: () => void;
+}
+
+const chunkSize = 500;
+
+const addHeader = (chunk: Uint8Array, index: number, total: number, mode: string): Uint8ClampedArray => {
+    const header = new TextEncoder().encode(`${index + 1}|${total}|${mode}|`);
+    // @ts-ignore
+    const dataWithHeader = new Uint8Array([...header, ...chunk]);
+    return new Uint8ClampedArray(dataWithHeader.buffer);
+};
+
+const escapeSpecialCharacters = (input: string): string => {
+    const specialCharacters: { [key: string]: string } = {
+        "|": "\\|"
+    };
+    return input.replace(/[|]/g, char => specialCharacters[char]);
+};
+
+const chunkArray = (array: Uint8Array, chunkSize: number): Uint8Array[] => {
+    const chunks: Uint8Array[] = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+        chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+};
+
+const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) => {
+    // Input: A filename
+    // Output: A series of QR code images
+
+    // Add your QR code generation logic here
+    // Use FileReader() to read the file content
+
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [qrCodes, setQRCodes] = useState<string[]>([]);
+
+    useEffect(() => {
+        const generateQR = async (inputData: string | Uint8Array) => {
+            const encodingMode = typeof inputData === 'string' ? 'utf-8' : 'binary';
+            const buffer = encodingMode === 'utf-8' ? new TextEncoder().encode(escapeSpecialCharacters(inputData as string)) : new Uint8Array(inputData as ArrayBuffer);
+            const chunks: Uint8ClampedArray[] = chunkArray(buffer, chunkSize).map((chunk, index, array) => addHeader(chunk, index, array.length, encodingMode));
+            const generatedQRCodes: string[] = [];
+
+            for (const chunk of chunks) {
+                try {
+                    // @ts-ignore
+                    const qrCode = await QRCode.toDataURL([{ data: chunk, mode: 'byte' }, { errorCorrectionLevel: 'H' }]);
+                    // @ts-ignore
+                    generatedQRCodes.push(qrCode);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            setQRCodes(generatedQRCodes);
+            onComplete();
+        };
+
+        if (typeof input === 'string') {
+            generateQR(input);
+        } else {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (event.target?.result) {
+                    const data = new Uint8Array(event.target.result as ArrayBuffer);
+                    const metadata = {
+                        name: input.name,
+                        size: input.size,
+                        type: input.type,
+                        lastModified: input.lastModified,
+                    };
+                    const metadataArray = new TextEncoder().encode(JSON.stringify(metadata) + '|');
+                    // @ts-ignore
+                    const fileDataWithMetadata = new Uint8Array([...metadataArray, ...data]);
+                    generateQR(fileDataWithMetadata);
+                }
+            };
+            reader.readAsArrayBuffer(input);
+        }
+    }, [input, onComplete]);
+
+    return (
+        <div>
+            {/* Render your QR code here */}
+            {/* It'll be a series of QR code images */}
+            {qrCodes.map((qrCode, index) => (
+                <img key={index} src={qrCode} alt={`QR Code ${index + 1}`} />
+            ))}
+        </div>
+    );
+};
+
+export default GenerateQRCode;

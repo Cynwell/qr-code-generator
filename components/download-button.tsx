@@ -1,5 +1,4 @@
 // components/DownloadButton.tsx
-// import { button as buttonStyles } from "@nextui-org/theme";
 import { Button } from "@nextui-org/button";
 
 const DownloadButton = ({ chunks, totalSegments, metadata }: { chunks: Uint8Array[], totalSegments: number, metadata: { name: string, type: string } }) => {
@@ -34,6 +33,9 @@ const DownloadButton = ({ chunks, totalSegments, metadata }: { chunks: Uint8Arra
   };
 
   const downloadFile = () => {
+    // Ensure this code runs only in the browser environment
+    if (typeof window === "undefined") return;
+
     let data;
     if (data === null) {
       throw new Error("Data is null");
@@ -55,14 +57,16 @@ const DownloadButton = ({ chunks, totalSegments, metadata }: { chunks: Uint8Arra
   };
 
   return (
-    <Button
-      color="secondary"
-      variant="ghost"
-      size="lg"
-      onClick={downloadFile}
-    >
-      Download File
-    </Button>
+    chunks.length == 0 || chunks.some(chunk => chunk === null) || chunks.length !== totalSegments ? null : (
+      <Button
+        color="secondary"
+        variant="ghost"
+        size="lg"
+        onClick={downloadFile}
+      >
+        Download File
+      </Button>
+    )
   );
 }
 

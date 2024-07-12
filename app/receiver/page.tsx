@@ -1,11 +1,10 @@
 // app/receiver/page.tsx
 "use client";
 import { title } from "@/components/primitives";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import VideoFeed from "@/components/video-feed";
 import DownloadButton from "@/components/download-button";
 import TextDisplay from "@/components/text-display";
-// import { button as buttonStyles } from "@nextui-org/theme";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
 import { Progress } from "@nextui-org/react";
@@ -25,11 +24,16 @@ export default function ReceiverPage() {
     if (nonNullChunks.length === totalSegments && totalSegments > 0) {
       setScanning(false);
     }
+    setProgressValue(totalSegments === 0 ? 0 : (nonNullChunks.length / totalSegments) * 100);
   }, [memoizedChunks, totalSegments]);
+
+  const toggleScanning = useCallback(() => {
+    setScanning(prev => !prev);
+  }, []);
 
   return (
     <div>
-      <h1 className={title()}>I'm&nbsp;</h1>
+      <h1 className={title()}>I&apos;m&nbsp;</h1>
       <h1 className={title({ color: "violet" })}>Receiver&nbsp;</h1>
       <Divider className="my-4" />
 
@@ -43,8 +47,7 @@ export default function ReceiverPage() {
       />
 
       {/* // A video component here to display the camera feed */}
-      {/* TODO: Find a way to stop the camera, and should be controlled by the button and the status scanning */}
-      {scanning && (
+      {
         <VideoFeed
           scanning={scanning}
           chunks={memoizedChunks}
@@ -54,15 +57,15 @@ export default function ReceiverPage() {
           setMode={setMode}
           setProgressValue={setProgressValue}
         />
-      )}
+      }
 
       {/* // A button to request camera access */}
       <Button
         color="secondary"
         variant="ghost"
         size="lg"
-        onClick={() => setScanning(!scanning)}
-        // disabled={memoizedChunks.length !== totalSegments}
+        onClick={toggleScanning}
+      // disabled={memoizedChunks.length !== totalSegments}
       >
         {scanning ? "Stop Scanning" : "Start Scanning"}
       </Button>

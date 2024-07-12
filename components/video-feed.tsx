@@ -1,9 +1,9 @@
 // components/video-feed.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo } from "react";
 import { decodeQR } from "@/utils/scan-qr-code";
 
 // TODO: Optimize the execution speed of the scanQRCode function, and make it more efficient, less resource-intensive, more performant and non-blocking
-export default function VideoFeed({ scanning, chunks, setChunks, setTotalSegments, setMetadata, setMode, setProgressValue }: { scanning: boolean, chunks: Uint8Array[] | string[], setChunks: Function, setTotalSegments: Function, setMetadata: Function, setMode: Function, setProgressValue: Function }) {
+const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata, setMode, setProgressValue }: { scanning: boolean, chunks: Uint8Array[] | string[], setChunks: Function, setTotalSegments: Function, setMetadata: Function, setMode: Function, setProgressValue: Function }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
@@ -74,7 +74,7 @@ export default function VideoFeed({ scanning, chunks, setChunks, setTotalSegment
         // Approach 2:
         if (video) {
           video.srcObject = stream;
-          video.setAttribute("playsinline", true); // Required for iOS Safari
+          video.setAttribute("playsinline", "true"); // Required for iOS Safari
           const playPromise = video.play();
           if (playPromise !== undefined) {
             playPromise.then(() => {
@@ -101,8 +101,12 @@ export default function VideoFeed({ scanning, chunks, setChunks, setTotalSegment
 
   return (
     <div>
-      <video ref={videoRef} style={{ display: "block" }} />
+      <video ref={videoRef} style={{ display: "block" }}>
+        <track kind="captions" />
+      </video>
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
-}
+};
+
+export default memo(VideoFeed);

@@ -6,11 +6,11 @@ export const siteConfig = {
   navItems: [
     {
       label: "Sender",
-      href: "/sender",
+      href: "sender",
     },
     {
       label: "Receiver",
-      href: "/receiver",
+      href: "receiver",
     },
   ],
   links: {

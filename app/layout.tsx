@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   icons: {
-    icon: "/qr-code-icon.svg",
+    icon: "qr-code-icon.svg",
   },
 };
 

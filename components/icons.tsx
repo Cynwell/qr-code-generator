@@ -13,7 +13,7 @@ export const Logo: React.FC<IconSvgProps> = ({
     width={size || width}
     {...props}
   >
-    <image href="/qr-code-icon.svg" height={size || height} width={size || width} />
+    <image href="qr-code-icon.svg" height={size || height} width={size || width} />
   </svg>
 );
 

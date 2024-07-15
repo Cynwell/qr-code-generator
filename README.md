@@ -6,7 +6,7 @@ The Animated QR Code Generator is a proof of concept product to experiment trans
 
 Before you begin, ensure you have the following installed:
 - Node.js (version 20.10.0 or later)
-- pnpm (version 9.2.0 or later) / npm (version 10.2.5 or later)
+- pnpm (version 9.5.0 or later) / npm (version 10.2.5 or later)
 
 ## Installation
 

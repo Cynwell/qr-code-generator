@@ -1,5 +1,7 @@
 // utils/generate-qr-code.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import styles from '../styles/qrcode.module.css';
+
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 
 interface GenerateQRCodeProps {
@@ -38,10 +40,13 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) =>
   // Add your QR code generation logic here
   // Use FileReader() to read the file content
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrCodes, setQRCodes] = useState<string[]>([]);
   const [currentQRIndex, setCurrentQRIndex] = useState(0);
+  const qrCodeToShow = useRef<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const forceUpdate = useForceUpdate();
+
 
   // Generate QR codes when the input changes
   useEffect(() => {
@@ -89,6 +94,13 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) =>
     }
   }, [input, onComplete]);
 
+  useEffect(() => {
+    if (qrCodes.length > 0) {
+      qrCodeToShow.current = qrCodes[0];
+      forceUpdate();
+    }
+  }, [qrCodes, forceUpdate]);
+
   // Set an interval to change the QR code every 2 seconds
   useEffect(() => {
     // Clear existing interval
@@ -98,9 +110,13 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) =>
 
     // Set a new interval if there are QR codes
     if (qrCodes.length > 0) {
+      let localIndex = 0;
       intervalRef.current = setInterval(() => {
-        setCurrentQRIndex((prevIndex) => (prevIndex + 1) % qrCodes.length);
-      }, 2000); // Change QR code every 2 seconds
+        localIndex = (localIndex + 1) % qrCodes.length;
+        qrCodeToShow.current = qrCodes[localIndex];
+        // setCurrentQRIndex((prevIndex) => (prevIndex + 1) % qrCodes.length);
+        forceUpdate();
+      }, 100); // Change QR code every 0.05 seconds
     }
 
     // Clear interval on component unmount or when qrCodes change
@@ -109,7 +125,7 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) =>
         clearInterval(intervalRef.current);
       }
     };
-  }, [qrCodes]);
+  }, [qrCodes, forceUpdate]);
 
   return (
     <div>
@@ -118,11 +134,26 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) =>
       {/* {qrCodes.map((qrCode, index) => (
         <img key={index} src={qrCode} alt={`QR Code ${index + 1}`} />
       ))} */}
-      {qrCodes.length > 0 && (
-        <img src={qrCodes[currentQRIndex]} alt={`QR Code ${currentQRIndex + 1}`} />
+      {/* {qrCodes.length > 0 && (
+        <img src={qrCodes[currentQRIndex]} alt={`QR Code ${currentQRIndex + 1}`} className={styles.centeredImage} />
+      )} */}
+      {qrCodeToShow.current && (
+        <QRCodeImage src={qrCodeToShow.current} alt={`QR Code ${currentQRIndex + 1}/${qrCodes.length}`} />
       )}
     </div>
   );
 };
+
+const QRCodeImage: React.FC<{ src: string, alt: string }> = React.memo(({ src, alt }) => (
+  <img src={src} alt={alt} className={styles.centeredImage} />
+));
+
+function useForceUpdate() {
+  const [, setTick] = useState(0);
+  const update = useCallback(() => {
+    setTick(tick => tick + 1);
+  }, []);
+  return update;
+}
 
 export default GenerateQRCode;

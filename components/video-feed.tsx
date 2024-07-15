@@ -1,15 +1,42 @@
 // components/video-feed.tsx
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, memo, useState } from "react";
+import { Button } from "@nextui-org/button";
+
 import { decodeQR } from "@/utils/scan-qr-code";
 
 // TODO: Optimize the execution speed of the scanQRCode function, and make it more efficient, less resource-intensive, more performant and non-blocking
-const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata, setMode, setProgressValue }: { scanning: boolean, chunks: Uint8Array[] | string[], setChunks: Function, setTotalSegments: Function, setMetadata: Function, setMode: Function, setProgressValue: Function }) => {
+const VideoFeed = ({ scanning, setChunks, setTotalSegments, setMetadata, setMode }: { scanning: boolean, setChunks: Function, setTotalSegments: Function, setMetadata: Function, setMode: Function }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string>("");
 
   useEffect(() => {
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
+      console.table(devices);
+      const videoDevices = devices.filter(device => device.kind === "videoinput");
+      console.log("Video input devices:", videoDevices);
+      setDevices(videoDevices);
+      // Optionally, set the first camera found as the initial device
+      if (videoDevices.length > 0 && !currentDeviceId) {
+        setCurrentDeviceId(videoDevices[0].deviceId);
+      }
+    });
+  }, [currentDeviceId]);
+
+  const switchCamera = () => {
+    const currentDeviceIndex = devices.findIndex(device => device.deviceId === currentDeviceId);
+    const nextDeviceIndex = (currentDeviceIndex + 1) % devices.length;
+    setCurrentDeviceId(devices[nextDeviceIndex].deviceId);
+  };
+
+  useEffect(() => {
+    if (!scanning || !currentDeviceId) return;
+
     const video = videoRef.current;
+    if (!video) return;
+
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
 
@@ -29,7 +56,7 @@ const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata,
             const total = parseInt(result.total);
             const index = parseInt(result.index) - 1;
 
-            if (chunks.length === 0) {
+            if (prevChunks.length === 0) {
               // Initialize the chunks array to the total length upon receiving the first chunk
               const initialChunks = new Array(total).fill(null);
               initialChunks[index] = result.decodedData;
@@ -50,12 +77,12 @@ const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata,
               if (index === 0) {
                 setMetadata(result.metadata);
               }
+                // Log the updated chunks array after the state update
+              console.table(newChunks);
               return newChunks;
             }
           });
 
-          // Log the updated chunks array after the state update
-          console.table(chunks);
           // setProgressValue(chunks.length === 0 ? 0 : (chunks.filter(chunk => chunk !== null).length / chunks.length) * 100);
         }
       }
@@ -63,7 +90,7 @@ const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata,
     };
 
     if (scanning) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then((stream) => {
+      navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: currentDeviceId } } }).then((stream) => {
         // I don't know what the difference between these two approaches, the error is still here, but happened in a different place:
         // Approach 1:
         // video.srcObject = stream;
@@ -97,7 +124,7 @@ const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata,
         video.srcObject = null;
       }
     };
-  }, [scanning, chunks, setChunks, setTotalSegments, setMetadata, setMode, setProgressValue]);
+  }, [scanning, currentDeviceId, setChunks, setTotalSegments, setMetadata, setMode]);
 
   return (
     <div>
@@ -105,6 +132,16 @@ const VideoFeed = ({ scanning, chunks, setChunks, setTotalSegments, setMetadata,
         <track kind="captions" />
       </video>
       <canvas ref={canvasRef} style={{ display: "none" }} />
+      {devices.length > 1 && (
+        <Button
+          color="secondary"
+          variant="ghost"
+          size="lg"
+          onClick={switchCamera}
+        >
+          Switch Camera
+        </Button>
+      )}
     </div>
   );
 };

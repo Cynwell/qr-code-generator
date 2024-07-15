@@ -1,53 +1,63 @@
-# Next.js & NextUI Template
+# Animated QR Code Generator
 
-This is a template for creating applications using Next.js 14 (app directory) and NextUI (v2).
+The Animated QR Code Generator is a proof of concept product to experiment transmitting arbitrary data with animated QR codes. It uses Unicode instead of Base64 to encode data for a more space-efficient implementation to store data. Theoretically, it could handle data of unlimited length by segmenting the data into multiple QR codes. The project is built with Next.js, React and TypeScript.
 
-[Try it on CodeSandbox](https://githubbox.com/nextui-org/next-app-template)
+## Prerequisites
 
-## Technologies Used
+Before you begin, ensure you have the following installed:
+- Node.js (version 20.10.0 or later)
+- pnpm (version 9.2.0 or later) / npm (version 10.2.5 or later)
 
-- [Next.js 14](https://nextjs.org/docs/getting-started)
-- [NextUI v2](https://nextui.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Tailwind Variants](https://tailwind-variants.org)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Framer Motion](https://www.framer.com/motion/)
-- [next-themes](https://github.com/pacocoursey/next-themes)
+## Installation
 
-## How to Use
+To set up the project for development on your local machine, follow these steps:
 
-### Use the template with create-next-app
+1. Clone the repository to your local machine:
+   ```sh
+   git clone https://github.com/Cynwell/qr-code-generator.git
+   ```
+2. Navigate to the project directory:
+   ```sh
+   cd qr-code-generator
+   ```
+3. Install the dependencies:
+   ```sh
+   npm install
+   ```
 
-To create a new project based on this template using `create-next-app`, run the following command:
+## How to Run
 
-```bash
-npx create-next-app -e https://github.com/nextui-org/next-app-template
+To start the application, run the following command in the terminal:
+
+```sh
+npm start
 ```
 
-### Install dependencies
+The application will be available at `http://localhost:3000`.
 
-You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `npm`:
+## Features
 
-```bash
-npm install
-```
+- **Unlimited Data Length Support**: Can encode an unlimited length of any text characters and even binary data.
+- **Intelligent Data Segmentation**: For data exceeding the QR code's maximum storage limit, it automatically segments the data into several QR codes for display, presented in an a series of animated QR codes.
+- **Dynamic QR Code Generation**: Generates QR codes dynamically based on the input data.
+- **Support for Files**: Can encode arbitrary files into QR codes, including metadata such as file name, size, and type. Due to browser security restrictions, altering the file creation or modification date is not permitted.
+- **Decoding Capability**: Includes a decoding client that can interpret the segmented QR codes and reconstruct the original data in arbitrary order.
+- **Indexing System for QR Codes**: Implemented an indexing system for QR codes to represent data order in the format `1/8|(Data)`, enhancing the handling of segmented data across multiple QR codes.
+- **Optimized Data Encoding**: Utilizes Unicode encoding to optimize storage space for non-ASCII data, offering a more efficient alternative to traditional Base64 encoding methods.
+- **NextUI Integration**: Leveraged NextUI for building a modern and responsive frontend, ensuring a seamless user experience.
+- **Drag-and-Drop Components**: Incorporated Uber's baseui library to provide user-friendly drag-and-drop components, facilitating easy file uploads.
+- **Progress Visualization**: Added a progress bar to visually represent the data transfer progress to enhance user interaction and feedback.
 
-### Run the development server
+## TODO
 
-```bash
-npm run dev
-```
+- [ ] Explore optimization techniques for encoding and decoding processes to further improve performance and efficiency. (The trade-off between encoding and decoding speed and data size included in the QR code)
 
-### Setup pnpm (optional)
+## Contributing
 
-If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
-
-```bash
-public-hoist-pattern[]=*@nextui-org/*
-```
-
-After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
-
-## License
-
-Licensed under the [MIT license](https://github.com/nextui-org/next-app-template/blob/main/LICENSE).
+Contributions are welcome! Please feel free to submit a pull request or open an issue for any bugs or feature requests.
+![alt text](demo-landing-page.png)
+![alt text](demo-sender-page.png)
+![alt text](demo-sender-page-qr-code.png)
+<!-- ![alt text](demo-receiver-page-qr-code.gif) -->
+![alt text](demo-receiver-page.png)
+![alt text](demo-receiver-page-download-file.png)

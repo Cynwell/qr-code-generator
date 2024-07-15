@@ -1,14 +1,14 @@
 // app/receiver/page.tsx
 "use client";
-import { title } from "@/components/primitives";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import VideoFeed from "@/components/video-feed";
-import DownloadButton from "@/components/download-button";
-import TextDisplay from "@/components/text-display";
 import { Button } from "@nextui-org/button";
 import { Divider } from "@nextui-org/divider";
 import { Progress } from "@nextui-org/react";
 
+import { title } from "@/components/primitives";
+import VideoFeed from "@/components/video-feed";
+import DownloadButton from "@/components/download-button";
+import TextDisplay from "@/components/text-display";
 
 export default function ReceiverPage() {
   const [chunks, setChunks] = useState([]);
@@ -28,8 +28,16 @@ export default function ReceiverPage() {
   }, [memoizedChunks, totalSegments]);
 
   const toggleScanning = useCallback(() => {
+    if (!scanning && chunks.length > 0) {
+      // Resetting the state for a new scanning session
+      setChunks([]);
+      setTotalSegments(0);
+      setMetadata({ name: "file.bin", type: "application/octet-stream" });
+      setMode("unknown");
+      setProgressValue(0);
+    }
     setScanning(prev => !prev);
-  }, []);
+  }, [scanning, chunks.length]);
 
   return (
     <div>
@@ -43,19 +51,17 @@ export default function ReceiverPage() {
         value={progressValue}
         color="success"
         showValueLabel={true}
-        className="max-w-md"
+        className="max-w-full"
       />
 
       {/* // A video component here to display the camera feed */}
       {
         <VideoFeed
           scanning={scanning}
-          chunks={memoizedChunks}
           setChunks={setChunks}
           setTotalSegments={setTotalSegments}
           setMetadata={setMetadata}
           setMode={setMode}
-          setProgressValue={setProgressValue}
         />
       }
 
@@ -67,7 +73,7 @@ export default function ReceiverPage() {
         onClick={toggleScanning}
       // disabled={memoizedChunks.length !== totalSegments}
       >
-        {scanning ? "Stop Scanning" : "Start Scanning"}
+        {scanning ? "Stop" : chunks.length > 0 ? "New Scan" : "Scan"}
       </Button>
 
       {/* // A button to download the scanned data as a file (only when all chunks are received, can be disabled initially, and can check whether all chunks are received or not) */}
@@ -78,7 +84,7 @@ export default function ReceiverPage() {
       />
 
       {/* // A text component to display the scanned text */}
-      <TextDisplay chunks={memoizedChunks} />
+      {mode === "utf-8" && <TextDisplay chunks={memoizedChunks} />}
     </div>
   );
 }

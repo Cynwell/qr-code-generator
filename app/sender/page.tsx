@@ -44,13 +44,17 @@ export default function SenderPage() {
     { ssr: false }
   );
 
+  // Determine if the FileUploader should be displayed
+  const showFileUploader = !input || input instanceof File;
+
   return (
     <div>
       <h1 className={title()}>I&apos;m&nbsp;</h1>
       <h1 className={title({ color: "blue" })}>Sender&nbsp;</h1>
 
       {/* A Drag and Drop component here to upload a single file */}
-      <DynamicStyletron />
+      {/* Conditionally render the FileUploader based on the input state */}
+      {showFileUploader && <DynamicStyletron />}
 
       {/* A text input to manually enter a text to generate a QR code */}
       <Input

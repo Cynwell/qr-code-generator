@@ -64,7 +64,7 @@ const DownloadButton = ({ chunks, totalSegments, metadata }: { chunks: Uint8Arra
         size="lg"
         onClick={downloadFile}
       >
-        Download File
+        Download
       </Button>
     )
   );

@@ -6,10 +6,10 @@ import QRCode from 'qrcode';
 
 interface GenerateQRCodeProps {
   input: string | File;
+  chunkSize?: number;
+  interval?: number;
   onComplete: () => void;
 }
-
-const chunkSize = 500;
 
 const addHeader = (chunk: Uint8Array, index: number, total: number, mode: string): Uint8ClampedArray => {
   const header = new TextEncoder().encode(`${index + 1}|${total}|${mode}|`);
@@ -33,7 +33,7 @@ const chunkArray = (array: Uint8Array, chunkSize: number): Uint8Array[] => {
   return chunks;
 };
 
-const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) => {
+const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, chunkSize=500, interval=100, onComplete }) => {
   // Input: A filename
   // Output: A series of QR code images
 
@@ -116,7 +116,7 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, onComplete }) =>
         qrCodeToShow.current = qrCodes[localIndex];
         // setCurrentQRIndex((prevIndex) => (prevIndex + 1) % qrCodes.length);
         forceUpdate();
-      }, 100); // Change QR code every 0.05 seconds
+      }, interval); // Change QR code every interval milliseconds
     }
 
     // Clear interval on component unmount or when qrCodes change

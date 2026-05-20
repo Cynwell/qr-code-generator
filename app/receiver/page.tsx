@@ -1,17 +1,21 @@
 // app/receiver/page.tsx
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Button } from "@nextui-org/button";
-import { Divider } from "@nextui-org/divider";
-import { Progress } from "@nextui-org/react";
+import { Button } from "@heroui/button";
+import { Divider } from "@heroui/divider";
+import { Progress } from "@heroui/progress";
 
 import { title } from "@/components/primitives";
 import VideoFeed from "@/components/video-feed";
 import DownloadButton from "@/components/download-button";
 import TextDisplay from "@/components/text-display";
 
+// Define a type that accommodates Uint8Array, string, and null
+type Chunk = Uint8Array | string | null;
+
 export default function ReceiverPage() {
-  const [chunks, setChunks] = useState([]);
+  // Update the state type to include nulls
+  const [chunks, setChunks] = useState<Chunk[]>([]);
   const [totalSegments, setTotalSegments] = useState(0);
   const [metadata, setMetadata] = useState({ name: "file.bin", type: "application/octet-stream" });
   const [mode, setMode] = useState("unknown");
@@ -20,11 +24,16 @@ export default function ReceiverPage() {
   const memoizedChunks = useMemo(() => chunks, [chunks]);
 
   useEffect(() => {
-    const nonNullChunks = memoizedChunks.filter(chunk => chunk !== null);
-    if (nonNullChunks.length === totalSegments && totalSegments > 0) {
+    // Filter out null values
+    const nonNullChunks = memoizedChunks.filter(
+      (chunk): chunk is Uint8Array | string => chunk !== null
+    );
+    if (nonNullChunks.length >= totalSegments && totalSegments > 0) {
       setScanning(false);
     }
-    setProgressValue(totalSegments === 0 ? 0 : (nonNullChunks.length / totalSegments) * 100);
+    setProgressValue(
+      totalSegments === 0 ? 0 : Math.ceil((nonNullChunks.length / totalSegments) * 100)
+    );
   }, [memoizedChunks, totalSegments]);
 
   const toggleScanning = useCallback(() => {
@@ -36,8 +45,11 @@ export default function ReceiverPage() {
       setMode("unknown");
       setProgressValue(0);
     }
-    setScanning(prev => !prev);
+    setScanning((prev) => !prev);
   }, [scanning, chunks.length]);
+
+  // Determine if the current mode is binary
+  const isBinary = mode !== "utf-8";
 
   return (
     <div>
@@ -54,37 +66,41 @@ export default function ReceiverPage() {
         className="max-w-full"
       />
 
-      {/* // A video component here to display the camera feed */}
-      {
-        <VideoFeed
-          scanning={scanning}
-          setChunks={setChunks}
-          setTotalSegments={setTotalSegments}
-          setMetadata={setMetadata}
-          setMode={setMode}
-        />
-      }
+      {/* Video component to display the camera feed */}
+      <VideoFeed
+        scanning={scanning}
+        setChunks={setChunks}
+        setTotalSegments={setTotalSegments}
+        setMetadata={setMetadata}
+        setMode={setMode}
+      />
 
-      {/* // A button to request camera access */}
+      {/* Button to start/stop scanning */}
       <Button
         color="secondary"
         variant="ghost"
         size="lg"
         onClick={toggleScanning}
-      // disabled={memoizedChunks.length !== totalSegments}
+        // disabled={memoizedChunks.length !== totalSegments}
       >
         {scanning ? "Stop" : chunks.length > 0 ? "New Scan" : "Scan"}
       </Button>
 
-      {/* // A button to download the scanned data as a file (only when all chunks are received, can be disabled initially, and can check whether all chunks are received or not) */}
-      <DownloadButton
-        chunks={memoizedChunks}
-        totalSegments={totalSegments}
-        metadata={metadata}
-      />
+      {/* DownloadButton rendered only in binary mode */}
+      {isBinary && (
+        <DownloadButton
+          chunks={memoizedChunks.filter((chunk): chunk is Uint8Array => chunk instanceof Uint8Array)}
+          totalSegments={totalSegments}
+          metadata={metadata}
+        />
+      )}
 
-      {/* // A text component to display the scanned text */}
-      {mode === "utf-8" && <TextDisplay chunks={memoizedChunks} />}
+      {/* TextDisplay rendered only in UTF-8 mode */}
+      {mode === "utf-8" && (
+        <TextDisplay
+          chunks={memoizedChunks.filter((chunk): chunk is string => typeof chunk === "string")}
+        />
+      )}
     </div>
   );
 }

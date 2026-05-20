@@ -1,6 +1,6 @@
-import { Link } from "@nextui-org/link";
-import { button as buttonStyles } from "@nextui-org/theme";
-import { Divider } from "@nextui-org/divider";
+import { Link } from "@heroui/link";
+import { button as buttonStyles } from "@heroui/theme";
+import { Divider } from "@heroui/divider";
 
 import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";

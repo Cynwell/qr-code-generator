@@ -1,5 +1,5 @@
 // components/DownloadButton.tsx
-import { Button } from "@nextui-org/button";
+import { Button } from "@heroui/button";
 
 const DownloadButton = ({ chunks, totalSegments, metadata }: { chunks: Uint8Array[], totalSegments: number, metadata: { name: string, type: string } }) => {
   const concatenateUint8Arrays = (arrays: Uint8Array[]) => {

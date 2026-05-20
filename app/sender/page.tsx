@@ -2,22 +2,20 @@
 "use client";
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { DarkTheme, BaseProvider } from 'baseui';
 import FileUploader from "@/components/file-uploader";
-import { Input } from "@nextui-org/input";
-import { Slider } from "@nextui-org/react";
+import { Textarea } from "@heroui/input";
+import { Slider } from "@heroui/slider";
 import { title } from "@/components/primitives";
 
 // Import GenerateQRCode with dynamic and disable SSR
 const GenerateQRCode = dynamic(() => import('@/utils/generate-qr-code'), { ssr: false });
-// const engine = new Styletron();
 
 export default function SenderPage() {
   {/* // It would require a state to store the uploaded file or the entered text (probably) */ }
   const [input, setInput] = useState<string | File | null>(null);
   const [showQR, setShowQR] = useState(false);
-  const [chunkSize, setChunkSize] = useState<number>(500);
-  const [interval, setInterval] = useState<number>(100);
+  const [chunkSize, setChunkSize] = useState<number>(1000);
+  const [interval, setInterval] = useState<number>(1000);
 
   const handleFileUpload = (file: File) => {
     setInput(file);
@@ -29,24 +27,6 @@ export default function SenderPage() {
     setShowQR(true);
   };
 
-  const DynamicStyletron = dynamic(
-    () => Promise.all([
-      import('styletron-engine-monolithic').then(mod => ({ Styletron: mod.Client })),
-      import('styletron-react').then(mod => ({ StyletronProvider: mod.Provider }))
-    ]).then(([styletron, provider]) => {
-      const DynamicStyletronComponent = () => (
-        <provider.StyletronProvider value={new styletron.Styletron()}>
-          <BaseProvider theme={DarkTheme}>
-            <FileUploader onFileUpload={handleFileUpload} />
-          </BaseProvider>
-        </provider.StyletronProvider>
-      );
-      DynamicStyletronComponent.displayName = 'DynamicStyletron';
-      return DynamicStyletronComponent;
-    }),
-    { ssr: false }
-  );
-
   // Determine if the FileUploader should be displayed
   const showFileUploader = !input || input instanceof File;
 
@@ -57,28 +37,28 @@ export default function SenderPage() {
 
       {/* A Drag and Drop component here to upload a single file */}
       {/* Conditionally render the FileUploader based on the input state */}
-      {showFileUploader && <DynamicStyletron />}
+      {showFileUploader && <FileUploader onFileUpload={handleFileUpload} />}
 
       {/* A text input to manually enter a text to generate a QR code */}
-      <Input
+      <Textarea
         placeholder="Enter text here"
         onChange={(e) => handleTextInput(e.target.value)}
       />
       <Slider
         label="Chunk Size"
-        step={10}
+        step={100}
         maxValue={2800}
-        minValue={10}
-        defaultValue={500}
+        minValue={100}
+        defaultValue={1000}
         onChange={(value) => setChunkSize(value as number)}
       />
       {/* Slider for interval */}
       <Slider
         label="Interval (ms)"
-        step={50}
+        step={100}
         maxValue={5000}
-        minValue={50}
-        defaultValue={100}
+        minValue={100}
+        defaultValue={1000}
         onChange={(value) => setInterval(value as number)}
       />
       {/* The generated QR code(s) should be displayed here, and the QR code(s) animations should repeat to display infinitely */}

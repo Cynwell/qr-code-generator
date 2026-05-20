@@ -1,6 +1,5 @@
-// components/file-uploader.tsx
 import React from "react";
-import { FileUploader } from "baseui/file-uploader";
+import { Button } from "@heroui/button";
 
 interface FileUploaderProps {
   onFileUpload: (file: File) => void;
@@ -8,16 +7,23 @@ interface FileUploaderProps {
 
 const FileUploaderComponent: React.FC<FileUploaderProps> = ({ onFileUpload }) => {
   return (
-    <FileUploader
-      onDrop={(acceptedFiles, rejectedFiles) => {
-        if (acceptedFiles.length > 0) {
-          onFileUpload(acceptedFiles[0]);
-        }
-        console.log(acceptedFiles, rejectedFiles);
-      }}
-    />
-  );
+    <div className="flex items-center gap-3">
+      <Button as="label" color="primary" variant="bordered">
+        Choose file
+        <input
+          className="sr-only"
+          type="file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
 
-}
+            if (file) {
+              onFileUpload(file);
+            }
+          }}
+        />
+      </Button>
+    </div>
+  );
+};
 
 export default FileUploaderComponent;

@@ -52,7 +52,9 @@ const GenerateQRCode: React.FC<GenerateQRCodeProps> = ({ input, chunkSize=500, i
   useEffect(() => {
     const generateQR = async (inputData: string | Uint8Array) => {
       const encodingMode = typeof inputData === 'string' ? 'utf-8' : 'binary';
-      const buffer = encodingMode === 'utf-8' ? new TextEncoder().encode(escapeSpecialCharacters(inputData as string)) : new Uint8Array(inputData as ArrayBuffer);
+      const buffer = typeof inputData === 'string'
+        ? new TextEncoder().encode(escapeSpecialCharacters(inputData))
+        : inputData;
       const chunks: Uint8ClampedArray[] = chunkArray(buffer, chunkSize).map((chunk, index, array) => addHeader(chunk, index, array.length, encodingMode));
       const generatedQRCodes: string[] = [];
 

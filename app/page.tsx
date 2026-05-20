@@ -1,5 +1,6 @@
 import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
+import NextLink from "next/link";
 
 import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";
@@ -11,25 +12,27 @@ export default function Home() {
         <h1 className={title()}>I&apos;m ...</h1>
         <Divider className="my-4" />
         <div className="flex h-5 items-center space-x-4 text-small">
-          <Button
-            as="a"
-            color="primary"
-            variant="ghost"
-            size="lg"
-            href={siteConfig.navItems[0].href}
-          >
-            Sender
-          </Button>
+          <NextLink href={siteConfig.navItems[0].href} passHref legacyBehavior>
+            <Button
+              as="a"
+              color="primary"
+              variant="ghost"
+              size="lg"
+            >
+              Sender
+            </Button>
+          </NextLink>
           <Divider orientation="vertical" />
-          <Button
-            as="a"
-            color="secondary"
-            variant="ghost"
-            size="lg"
-            href={siteConfig.navItems[1].href}
-          >
-            Receiver
-          </Button>
+          <NextLink href={siteConfig.navItems[1].href} passHref legacyBehavior>
+            <Button
+              as="a"
+              color="secondary"
+              variant="ghost"
+              size="lg"
+            >
+              Receiver
+            </Button>
+          </NextLink>
         </div>
       </div>
     </section>

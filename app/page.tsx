@@ -1,5 +1,4 @@
-import { Link } from "@heroui/link";
-import { button as buttonStyles } from "@heroui/theme";
+import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
 
 import { siteConfig } from "@/config/site";
@@ -12,27 +11,25 @@ export default function Home() {
         <h1 className={title()}>I&apos;m ...</h1>
         <Divider className="my-4" />
         <div className="flex h-5 items-center space-x-4 text-small">
-          <Link
-            className={buttonStyles({
-              color: "primary",
-              variant: "ghost",
-              size: "lg",
-            })}
+          <Button
+            as="a"
+            color="primary"
+            variant="ghost"
+            size="lg"
             href={siteConfig.navItems[0].href}
           >
             Sender
-          </Link>
+          </Button>
           <Divider orientation="vertical" />
-          <Link
-            className={buttonStyles({
-              color: "secondary",
-              variant: "ghost",
-              size: "lg",
-            })}
+          <Button
+            as="a"
+            color="secondary"
+            variant="ghost"
+            size="lg"
             href={siteConfig.navItems[1].href}
           >
             Receiver
-          </Link>
+          </Button>
         </div>
       </div>
     </section>

@@ -2,6 +2,8 @@ import * as React from "react";
 
 import { IconSvgProps } from "@/types";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const Logo: React.FC<IconSvgProps> = ({
   size = 36,
   width,
@@ -13,7 +15,7 @@ export const Logo: React.FC<IconSvgProps> = ({
     width={size || width}
     {...props}
   >
-    <image href="qr-code-icon.svg" height={size || height} width={size || width} />
+    <image href={`${basePath}/qr-code-icon.svg`} height={size || height} width={size || width} />
   </svg>
 );
 

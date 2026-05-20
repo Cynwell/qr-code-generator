@@ -58,6 +58,11 @@ Contributions are welcome! Please feel free to submit a pull request or open an 
 ![alt text](demo-landing-page.png)
 ![alt text](demo-sender-page.png)
 ![alt text](demo-sender-page-qr-code.png)
-<!-- ![alt text](demo-receiver-page-qr-code.gif) -->
 ![alt text](demo-receiver-page.png)
 ![alt text](demo-receiver-page-download-file.png)
+
+## Improvements that can be made:
+- Increase the interval to 250ms for higher QR code recognition rate
+- Consider implementing fountain codes for error correction
+- Make the chunk size slider and the interval slider to have constant width, independent of the QR Code's image container
+- Allow user to type and fill in the desired chunk size and interval manually, then click "Apply" to update the QR Code

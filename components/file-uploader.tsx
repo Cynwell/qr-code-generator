@@ -9,7 +9,7 @@ const FileUploaderComponent: React.FC<FileUploaderProps> = ({ onFileUpload }) =>
   return (
     <div className="flex items-center gap-3">
       <Button as="label" color="primary" variant="bordered">
-        Choose file
+        Choose File
         <input
           className="sr-only"
           type="file"

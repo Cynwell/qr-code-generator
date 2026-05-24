@@ -11,7 +11,7 @@ const FragmentGrid: React.FC<FragmentGridProps> = ({ totalFragments, recoveredFl
   if (totalFragments === 0) return null;
 
   const recoveredCount = recoveredFlags.filter(Boolean).length;
-  const percentage = Math.ceil((recoveredCount / totalFragments) * 100);
+  const percentage = Math.floor((recoveredCount / totalFragments) * 100);
 
   return (
     <div className="w-full flex flex-col gap-2">

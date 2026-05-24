@@ -3,34 +3,58 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Button } from "@heroui/button";
 import { Slider } from "@heroui/slider";
 
-import { decodeQR, FountainResult, SequentialResult } from "@/utils/scan-qr-code";
-import { FountainDecoder } from "@/utils/fountain";
+import { JsQrBackend, MultiRegionJsQrBackend, BarcodeDetectorBackend, type DecodedQr, type ScannerBackend } from "@/utils/receiver/scanner-backends";
+import { RoiTracker } from "@/utils/receiver/roi-tracker";
+import { ReceiverSession, type ReceiverStats, type ReceiverState } from "@/utils/receiver/receiver-session";
 
-// Define a type that accommodates Uint8Array, string, and null
-type Chunk = Uint8Array | string | null;
+export type VideoInputSource = 'camera' | 'screen';
 
 interface VideoFeedProps {
   scanning: boolean;
-  setChunks: React.Dispatch<React.SetStateAction<Chunk[]>>;
-  setTotalSegments: React.Dispatch<React.SetStateAction<number>>;
-  setMetadata: React.Dispatch<React.SetStateAction<{ name: string; type: string }>>;
-  setMode: React.Dispatch<React.SetStateAction<string>>;
-  setRecoveredFlags?: React.Dispatch<React.SetStateAction<boolean[]>>;
+  inputSource?: VideoInputSource;
+  multiQrGrid?: { cols: number; rows: number } | null;
+  onRecoveredUpdate: (flags: boolean[], recoveredCount: number, totalBlocks: number) => void;
+  onComplete: (session: ReceiverSession) => void;
+  onStatsUpdate?: (stats: ReceiverStats) => void;
+  onStateChange?: (state: ReceiverState) => void;
+  onManifestReceived?: (manifest: { mode: string; fileName: string; mimeType: string; K: number }) => void;
 }
 
 const VideoFeed: React.FC<VideoFeedProps> = ({
   scanning,
-  setChunks,
-  setTotalSegments,
-  setMetadata,
-  setMode,
-  setRecoveredFlags,
+  inputSource = 'camera',
+  multiQrGrid,
+  onRecoveredUpdate,
+  onComplete,
+  onStatsUpdate,
+  onStateChange,
+  onManifestReceived,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const videoFrameCallbackRef = useRef<number | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
-  const fountainDecoderRef = useRef<FountainDecoder | null>(null);
+  const sessionRef = useRef<ReceiverSession>(new ReceiverSession());
+  const singleScannerRef = useRef(new JsQrBackend());
+  const multiScannerRef = useRef<MultiRegionJsQrBackend | null>(null);
+  const barcodeDetectorRef = useRef<BarcodeDetectorBackend | null>(null);
+  const roiTrackerRef = useRef(new RoiTracker());
+  const canvasSizeSetRef = useRef(false);
+
+  // Select the appropriate scanner based on multiQrGrid prop
+  const getScanner = useCallback((): ScannerBackend => {
+    if (multiQrGrid && multiQrGrid.cols * multiQrGrid.rows > 1) {
+      if (!multiScannerRef.current) {
+        multiScannerRef.current = new MultiRegionJsQrBackend(multiQrGrid.cols, multiQrGrid.rows);
+      } else {
+        multiScannerRef.current.setGrid(multiQrGrid.cols, multiQrGrid.rows);
+      }
+      return multiScannerRef.current;
+    }
+    return singleScannerRef.current;
+  }, [multiQrGrid]);
+
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string>("");
   const [torchSupported, setTorchSupported] = useState(false);
@@ -43,20 +67,23 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
       videoRef.current.setAttribute("playsinline", "true");
-      videoRef.current.play();
+      videoRef.current.play().catch((err) => {
+        // AbortError is expected when switching cameras (play() interrupted by new load)
+        if (err.name !== 'AbortError') {
+          console.error("Error playing video:", err);
+        }
+      });
     }
-    // Check capabilities of the video track
     const track = stream.getVideoTracks()[0];
     trackRef.current = track;
+    canvasSizeSetRef.current = false;
     if (track) {
       const capabilities = track.getCapabilities() as any;
-      // Torch
       if (capabilities?.torch) {
         setTorchSupported(true);
       } else {
         setTorchSupported(false);
       }
-      // Zoom
       if (capabilities?.zoom) {
         setZoomSupported(true);
         setZoomRange({
@@ -81,6 +108,7 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
     setTorchOn(false);
     setTorchSupported(false);
     setZoomSupported(false);
+    canvasSizeSetRef.current = false;
   }, []);
 
   const switchCamera = useCallback(() => {
@@ -122,9 +150,13 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
 
   useEffect(() => {
     if (!scanning) {
-      fountainDecoderRef.current = null;
+      sessionRef.current = new ReceiverSession();
+      roiTrackerRef.current.reset();
       return;
     }
+
+    // Only enumerate camera devices when using camera source
+    if (inputSource !== 'camera') return;
 
     navigator.mediaDevices
       .enumerateDevices()
@@ -140,14 +172,36 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
       .catch((error) => {
         console.error("Error enumerating devices:", error);
       });
-  }, [scanning, currentDeviceId]);
+  }, [scanning, currentDeviceId, inputSource]);
 
   useEffect(() => {
-    const constraints =
-      currentDeviceId === ""
-        ? { video: { facingMode: { exact: "environment" } } }
-        : { video: { deviceId: { exact: currentDeviceId } } };
-    if (scanning) {
+    if (!scanning) {
+      stopVideoStream();
+      setCurrentDeviceId("");
+      return;
+    }
+
+    if (inputSource === 'screen') {
+      // Screen capture mode
+      stopVideoStream();
+      navigator.mediaDevices
+        .getDisplayMedia({ video: true, audio: false })
+        .then((stream) => {
+          startVideoStream(stream);
+          // Auto-stop scanning if user ends screen share
+          stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+            stopVideoStream();
+          });
+        })
+        .catch((error) => {
+          console.error("Error accessing screen capture:", error);
+        });
+    } else {
+      // Camera mode
+      const constraints =
+        currentDeviceId === ""
+          ? { video: { facingMode: { exact: "environment" } } }
+          : { video: { deviceId: { exact: currentDeviceId } } };
       stopVideoStream();
       navigator.mediaDevices
         .getUserMedia(constraints)
@@ -157,151 +211,143 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
         .catch((error) => {
           console.error("Error accessing camera:", error);
         });
-    } else {
-      stopVideoStream();
-      setCurrentDeviceId("");
     }
-  }, [
-    scanning,
-    currentDeviceId,
-    startVideoStream,
-    stopVideoStream,
-  ]);
+  }, [scanning, currentDeviceId, inputSource, startVideoStream, stopVideoStream]);
 
   const scanQRCode = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
 
-    if (
-      video &&
-      canvas &&
-      context &&
-      video.readyState === video.HAVE_ENOUGH_DATA
-    ) {
+    if (!video || !canvas || !context || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      scheduleNextScan();
+      return;
+    }
+
+    const session = sessionRef.current;
+    session.stats.videoFramesObserved++;
+
+    // Set canvas size only when video dimensions change (not every frame)
+    if (!canvasSizeSetRef.current || canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
       canvas.height = video.videoHeight;
       canvas.width = video.videoWidth;
+      roiTrackerRef.current.setFrameSize(video.videoWidth, video.videoHeight);
+      canvasSizeSetRef.current = true;
+    }
+
+    const isMultiQr = multiQrGrid && multiQrGrid.cols * multiQrGrid.rows > 1;
+    const scanner = getScanner();
+
+    // In multi-QR mode, always use full frame (no ROI)
+    let imageData: ImageData;
+    if (isMultiQr) {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      const result = decodeQR(imageData);
-
-      if (result) {
-        if (result.type === 'fountain') {
-          handleFountainSymbol(result);
-        } else {
-          handleSequentialChunk(result);
-        }
+      imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      session.stats.scanMode = 'multi-qr';
+    } else {
+      // ROI scanning for single QR mode
+      const roi = roiTrackerRef.current.getRoi();
+      if (roi) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        imageData = context.getImageData(roi.x, roi.y, roi.width, roi.height);
+        session.stats.scanMode = 'roi';
+      } else {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        session.stats.scanMode = 'full-frame';
       }
     }
-    animationFrameRef.current = requestAnimationFrame(scanQRCode);
-  }, [setChunks, setTotalSegments, setMetadata, setMode, setRecoveredFlags]);
 
-  const handleFountainSymbol = useCallback((result: FountainResult) => {
-    const { symbolId, K, blockSize, origLen, mode, data } = result;
+    // Scan using the backend
+    const results = scanner.scan(imageData);
 
-    // Initialize decoder on first symbol
-    if (!fountainDecoderRef.current || fountainDecoderRef.current.K !== K) {
-      fountainDecoderRef.current = new FountainDecoder(K, blockSize, origLen, mode);
-      setTotalSegments(K);
-      setMode(mode);
-      setChunks(new Array(K).fill(null));
-      if (setRecoveredFlags) setRecoveredFlags(new Array(K).fill(false));
-    }
-
-    const decoder = fountainDecoderRef.current;
-    const newlyRecovered = decoder.addSymbol(symbolId, data);
-
-    if (newlyRecovered.length > 0) {
-      // Update chunks with newly recovered blocks
-      setChunks((prev) => {
-        const updated = [...prev];
-        for (const idx of newlyRecovered) {
-          updated[idx] = decoder.recovered[idx]!;
-        }
-        return updated;
-      });
-
-      if (setRecoveredFlags) {
-        setRecoveredFlags(decoder.getRecoveredFlags());
-      }
-
-      // If complete, parse metadata for binary mode
-      if (decoder.isComplete) {
-        const fullData = decoder.getRecoveredData();
-        if (fullData && mode === 'binary') {
-          try {
-            const text = new TextDecoder().decode(fullData);
-            const pipeIdx = text.indexOf('|');
-            if (pipeIdx > 0) {
-              const metaJson = text.substring(0, pipeIdx);
-              const parsed = JSON.parse(metaJson);
-              if (parsed.name) setMetadata(parsed);
-            }
-          } catch {
-            // metadata parsing failed, use defaults
+    if (results.length > 0) {
+      for (const qr of results) {
+        // Update ROI from detection location (only in single-QR mode)
+        if (!isMultiQr && qr.location) {
+          const roi = roiTrackerRef.current.getRoi();
+          if (roi) {
+            const adjustedLocation = {
+              topLeftCorner: { x: qr.location.topLeftCorner.x + roi.x, y: qr.location.topLeftCorner.y + roi.y },
+              topRightCorner: { x: qr.location.topRightCorner.x + roi.x, y: qr.location.topRightCorner.y + roi.y },
+              bottomLeftCorner: { x: qr.location.bottomLeftCorner.x + roi.x, y: qr.location.bottomLeftCorner.y + roi.y },
+              bottomRightCorner: { x: qr.location.bottomRightCorner.x + roi.x, y: qr.location.bottomRightCorner.y + roi.y },
+            };
+            roiTrackerRef.current.updateFromDetection(adjustedLocation);
+          } else {
+            roiTrackerRef.current.updateFromDetection(qr.location);
           }
         }
 
-        // Replace chunks with final reassembled data segments
-        setChunks((prev) => {
-          const updated = [...prev];
-          for (let i = 0; i < K; i++) {
-            updated[i] = decoder.recovered[i]!;
-          }
-          return updated;
-        });
+        // Process through receiver session
+        const result = session.processRawPayload(qr.binaryData);
+
+        if (result.manifestReceived && session.manifest) {
+          onManifestReceived?.({
+            mode: session.manifest.mode,
+            fileName: session.manifest.fileName,
+            mimeType: session.manifest.mimeType,
+            K: session.stats.sourceBlockCount,
+          });
+        }
+
+        if (result.newlyRecovered.length > 0) {
+          const flags = session.getRecoveredFlags();
+          onRecoveredUpdate(flags, session.stats.recoveredBlocks, session.stats.sourceBlockCount);
+        }
+
+        onStateChange?.(result.state);
+
+        if (result.isComplete) {
+          onComplete(session);
+          return; // Stop scanning
+        }
       }
+    } else {
+      roiTrackerRef.current.markMiss();
     }
-  }, [setChunks, setTotalSegments, setMetadata, setMode, setRecoveredFlags]);
 
-  const handleSequentialChunk = useCallback((result: SequentialResult) => {
-    const { index, total, mode, metadata, decodedData } = result;
-    const totalSegments = parseInt(total, 10);
-    const chunkIndex = parseInt(index, 10) - 1;
-
-    setChunks((prevChunks: Chunk[]) => {
-      const newChunks = prevChunks.length === 0
-        ? new Array(totalSegments).fill(null)
-        : [...prevChunks];
-
-      if (!newChunks[chunkIndex]) {
-        newChunks[chunkIndex] = decodedData;
-      }
-
-      if (chunkIndex === 0 && metadata) {
-        setMetadata(metadata);
-      }
-
-      if (prevChunks.length === 0) {
-        setTotalSegments(totalSegments);
-        setMode(mode);
-      }
-
-      return newChunks;
-    });
-
-    // Update recovered flags for sequential mode
-    if (setRecoveredFlags) {
-      setRecoveredFlags((prev) => {
-        const flags = prev.length === 0 ? new Array(totalSegments).fill(false) : [...prev];
-        flags[chunkIndex] = true;
-        return flags;
-      });
+    // Report stats periodically
+    if (session.stats.videoFramesObserved % 10 === 0) {
+      onStatsUpdate?.({ ...session.stats });
     }
-  }, [setChunks, setTotalSegments, setMetadata, setMode, setRecoveredFlags]);
+
+    scheduleNextScan();
+  }, [onRecoveredUpdate, onComplete, onStatsUpdate, onStateChange, onManifestReceived, multiQrGrid, getScanner]);
+
+  const scheduleNextScan = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) {
+      animationFrameRef.current = requestAnimationFrame(scanQRCode);
+      return;
+    }
+
+    // Use requestVideoFrameCallback when available
+    if ('requestVideoFrameCallback' in video) {
+      videoFrameCallbackRef.current = (video as any).requestVideoFrameCallback(
+        () => scanQRCode()
+      );
+    } else {
+      animationFrameRef.current = requestAnimationFrame(scanQRCode);
+    }
+  }, [scanQRCode]);
 
   useEffect(() => {
-    if (!scanning || !currentDeviceId) return;
+    if (!scanning || (!currentDeviceId && inputSource === 'camera')) return;
 
-    animationFrameRef.current = requestAnimationFrame(scanQRCode);
+    scheduleNextScan();
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
+      if (videoFrameCallbackRef.current && videoRef.current && 'cancelVideoFrameCallback' in videoRef.current) {
+        (videoRef.current as any).cancelVideoFrameCallback(videoFrameCallbackRef.current);
+        videoFrameCallbackRef.current = null;
+      }
     };
-  }, [scanning, currentDeviceId, scanQRCode]);
+  }, [scanning, currentDeviceId, scheduleNextScan]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -313,10 +359,9 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
       </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      {/* Camera controls - only shown while scanning */}
-      {scanning && (
+      {/* Camera controls (only shown for camera source) */}
+      {scanning && inputSource === 'camera' && (
         <div className="flex flex-col gap-3">
-          {/* Buttons row */}
           <div className="flex justify-center gap-2 flex-wrap">
             {devices.length > 1 && (
               <Button
@@ -340,7 +385,6 @@ const VideoFeed: React.FC<VideoFeedProps> = ({
             )}
           </div>
 
-          {/* Zoom slider */}
           {zoomSupported && zoomRange.max > zoomRange.min && (
             <Slider
               label="Zoom"

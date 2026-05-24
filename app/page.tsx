@@ -1,38 +1,38 @@
+"use client";
+
 import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
-import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
-import { title, subtitle } from "@/components/primitives";
+import { title } from "@/components/primitives";
 
 export default function Home() {
+  const router = useRouter();
+
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <div className="inline-block max-w-lg text-center justify-center">
-        <h1 className={title()}>I&apos;m ...</h1>
+    <section className="flex flex-col items-center justify-center gap-6 py-12 md:py-16">
+      <div className="text-center">
+        <h1 className={title({ size: 'lg' })}>I&apos;m ...</h1>
         <Divider className="my-4" />
         <div className="flex h-5 items-center space-x-4 text-small">
-          <NextLink href={siteConfig.navItems[0].href} passHref legacyBehavior>
-            <Button
-              as="a"
-              color="primary"
-              variant="ghost"
-              size="lg"
-            >
-              Sender
-            </Button>
-          </NextLink>
+          <Button
+            color="primary"
+            variant="ghost"
+            size="lg"
+            onPress={() => router.push(siteConfig.navItems[0].href)}
+          >
+            Sender
+          </Button>
           <Divider orientation="vertical" />
-          <NextLink href={siteConfig.navItems[1].href} passHref legacyBehavior>
-            <Button
-              as="a"
-              color="secondary"
-              variant="ghost"
-              size="lg"
-            >
-              Receiver
-            </Button>
-          </NextLink>
+          <Button
+            color="secondary"
+            variant="ghost"
+            size="lg"
+            onPress={() => router.push(siteConfig.navItems[1].href)}
+          >
+            Receiver
+          </Button>
         </div>
       </div>
     </section>
